@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Investment Screener</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // Lucide icons as inline SVG components
+        const TrendingUp = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+        );
+
+        const Filter = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+        );
+
+        const DollarSign = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+        );
+
+        const FileText = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+        );
+
+        const ExternalLink = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+        );
+
+        const X = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        );
+
+        const BarChart = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="12" y1="20" x2="12" y2="10"></line>
+                <line x1="18" y1="20" x2="18" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="16"></line>
+            </svg>
+        );
+
+        // Your stock data
+        const stocksData = [
+  {
+    "ticker": "NVDA",
+    "price": 183.04,
+    "source_count": 2,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A semiconductor designer increasing its activity in the quantum realm."
+      },
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Nvidia's GPUs are well-suited for the massive information processing required for machine learning. Powering data centers and AI model training."
+      }
+    ]
+  },
+  {
+    "ticker": "IBM",
+    "price": 277.82,
+    "source_count": 2,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A large IT services company with a hand in the development of quantum computers and related technologies."
+      },
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "IBM scientist Arthur Samuel is credited with coining the term \"machine learning.\""
+      }
+    ]
+  },
+  {
+    "ticker": "PLTR",
+    "price": 175.44,
+    "source_count": 2,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "Palantir is mentioned as a comparison to BigBear.ai, as both companies source revenues from government agencies and partner on projects."
+      },
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Listed as a top company participating in the machine learning sector."
+      }
+    ]
+  },
+  {
+    "ticker": "IONQ",
+    "price": 70.65,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A quantum computing pure-play company developing quantum computing hardware and making its systems available via major cloud services. It is a speculative play with high growth potential but also high risk."
+      }
+    ]
+  },
+  {
+    "ticker": "RGTI",
+    "price": 43.92,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A small, high-risk business that went public early in the COVID-19 pandemic. Their stock soared in 2024 as the basic quantum computing technology took an important step forward."
+      }
+    ]
+  },
+  {
+    "ticker": "ARQQ",
+    "price": 48.52,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A company creating software for quantum computers, specifically security software."
+      }
+    ]
+  },
+  {
+    "ticker": "QUBT",
+    "price": 19.02,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "An integrated hardware and software company in the quantum computing space."
+      }
+    ]
+  },
+  {
+    "ticker": "MSFT",
+    "price": 510.96,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A software titan researching and developing quantum computing technology, including hardware and software. It also offers quantum computing services via Azure."
+      }
+    ]
+  },
+  {
+    "ticker": "HON",
+    "price": 200.91,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A large industrial company with a hand in the development of quantum computers and related technologies."
+      }
+    ]
+  },
+  {
+    "ticker": "INTC",
+    "price": 36.33,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A semiconductor designer increasing its activity in the quantum realm."
+      }
+    ]
+  },
+  {
+    "ticker": "QBTS",
+    "price": 33.02,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "A small, high-risk business that went public early in the COVID-19 pandemic. Their stock soared in 2024 as the basic quantum computing technology took an important step forward."
+      }
+    ]
+  },
+  {
+    "ticker": "AMZN",
+    "price": 216.37,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "8 Best Quantum Computing Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/quantum-computing-stocks/",
+        "published": "2025-08-20 07:00",
+        "notes": "Amazon Web Services (AWS) partners with IonQ to provide access to quantum computing power."
+      }
+    ]
+  },
+  {
+    "ticker": "BBAI",
+    "price": 7.22,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "BigBear.ai provides AI and machine learning tools for decision intelligence, focusing on government and private sector applications. It's compared to Palantir and partners with L3Harris."
+      }
+    ]
+  },
+  {
+    "ticker": "RR",
+    "price": 5.92,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "Richtech Robotics designs AI-powered robots for the service industry, including delivery and food automation. It's expanding operations with Ghost Kitchens and deploying humanoid drink robots."
+      }
+    ]
+  },
+  {
+    "ticker": "AISP",
+    "price": 5.13,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "Airship AI specializes in AI-powered video and sensor data management for law enforcement, security, and defense. It secured a $4 million contract with the U.S. Department of Homeland Security."
+      }
+    ]
+  },
+  {
+    "ticker": "LHX",
+    "price": 292.34,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "L3Harris Technologies partners with BigBear.ai as the exclusive supplier of predictive analytics for autonomous surface vessels."
+      }
+    ]
+  },
+  {
+    "ticker": "SERV",
+    "price": 14.9,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "Serv Robotics is mentioned as a comparison to Richtech Robotics, as both companies produce delivery robots."
+      }
+    ]
+  },
+  {
+    "ticker": "UBER",
+    "price": 93.4,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "On Fire: 5 Best Artificial Intelligence Penny Stocks - MarketBeat",
+        "url": "https://www.marketbeat.com/stock-ideas/5-best-artificial-intelligence-penny-stocks-on-fire/",
+        "published": "2025-01-14 08:00",
+        "notes": "Uber is mentioned in relation to Serv Robotics, which is seeking to deploy robots in a deal with Uber."
+      }
+    ]
+  },
+  {
+    "ticker": "GOOGL",
+    "price": 236.57,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Mentioned as the parent company of Google, which uses machine learning for internet searches."
+      }
+    ]
+  },
+  {
+    "ticker": "GOOG",
+    "price": 237.49,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Mentioned as the parent company of Google, which uses machine learning for internet searches."
+      }
+    ]
+  },
+  {
+    "ticker": "NFLX",
+    "price": 1220.08,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Uses machine learning to recommend television shows and movies."
+      }
+    ]
+  },
+  {
+    "ticker": "TSLA",
+    "price": 413.49,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Tesla uses machine learning for self-driving cars and is continuously improving its Autopilot and Full Self-Driving features."
+      }
+    ]
+  },
+  {
+    "ticker": "ACN",
+    "price": 240.94,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Accenture is a global consulting firm that helps companies leverage tech, including AI and machine learning, to transform their operations."
+      }
+    ]
+  },
+  {
+    "ticker": "NOW",
+    "price": 888.71,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Listed as a top company participating in the machine learning sector."
+      }
+    ]
+  },
+  {
+    "ticker": "SNOW",
+    "price": 242.17,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Listed as a top company participating in the machine learning sector."
+      }
+    ]
+  },
+  {
+    "ticker": "CRWD",
+    "price": 493.66,
+    "source_count": 1,
+    "sources": [
+      {
+        "title": "7 Best Machine Learning Stocks to Buy in 2025 - The Motley Fool",
+        "url": "https://www.fool.com/investing/stock-market/market-sectors/information-technology/ai-stocks/machine-learning-stocks/",
+        "published": "2025-09-08 07:00",
+        "notes": "Listed as a top company participating in the machine learning sector."
+      }
+    ]
+  }
+];
+
+        function StockScreener() {
+          const [priceFilter, setPriceFilter] = useState('all');
+          const [sortBy, setSortBy] = useState('mentions');
+          const [searchQuery, setSearchQuery] = useState('');
+          const [selectedStock, setSelectedStock] = useState(null);
+          const [showStats, setShowStats] = useState(false);
+
+          const filteredStocks = useMemo(() => {
+            let filtered = stocksData;
+
+            if (priceFilter !== 'all') {
+              const maxPrice = parseInt(priceFilter);
+              filtered = filtered.filter(s => s.price <= maxPrice);
+            }
+
+            if (searchQuery) {
+              filtered = filtered.filter(s =>
+                s.ticker.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+            }
+
+            if (sortBy === 'price-asc') {
+              filtered = [...filtered].sort((a, b) => a.price - b.price);
+            } else if (sortBy === 'price-desc') {
+              filtered = [...filtered].sort((a, b) => b.price - a.price);
+            } else if (sortBy === 'mentions') {
+              filtered = [...filtered].sort((a, b) => b.source_count - a.source_count);
+            }
+
+            return filtered;
+          }, [priceFilter, sortBy, searchQuery]);
+
+          // Calculate stats
+          const stats = useMemo(() => {
+            const prices = filteredStocks.map(s => s.price);
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length || 0;
+            const under20 = filteredStocks.filter(s => s.price < 20).length;
+            const totalMentions = filteredStocks.reduce((sum, s) => sum + s.source_count, 0);
+
+            return {
+              total: filteredStocks.length,
+              avgPrice: avgPrice.toFixed(2),
+              under20,
+              totalMentions
+            };
+          }, [filteredStocks]);
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4 md:p-6">
+              <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="mb-6 md:mb-8 fade-in">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2 flex items-center gap-3">
+                        <TrendingUp size={36} className="text-emerald-600" />
+                        Stock Investment Screener
+                      </h1>
+                      <p className="text-slate-600">
+                        Curated investment opportunities from {stats.totalMentions} article mentions
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowStats(!showStats)}
+                      className="px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-slate-700 font-medium"
+                    >
+                      <BarChart size={20} />
+                      Stats
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats Panel */}
+                {showStats && (
+                  <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 fade-in">
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="text-2xl font-bold text-emerald-600">{stats.total}</div>
+                      <div className="text-sm text-slate-600">Total Stocks</div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="text-2xl font-bold text-blue-600">${stats.avgPrice}</div>
+                      <div className="text-sm text-slate-600">Avg Price</div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="text-2xl font-bold text-purple-600">{stats.under20}</div>
+                      <div className="text-sm text-slate-600">Under $20</div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="text-2xl font-bold text-orange-600">{stats.totalMentions}</div>
+                      <div className="text-sm text-slate-600">Total Mentions</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Filters */}
+                <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6 fade-in">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Filter size={20} className="text-slate-600" />
+                    <h2 className="text-lg font-semibold text-slate-900">Filters</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Search Ticker
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., NVDA, MSFT..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Maximum Price
+                      </label>
+                      <select
+                        value={priceFilter}
+                        onChange={(e) => setPriceFilter(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      >
+                        <option value="all">All Prices</option>
+                        <option value="5">Under $5</option>
+                        <option value="10">Under $10</option>
+                        <option value="15">Under $15</option>
+                        <option value="20">Under $20</option>
+                        <option value="50">Under $50</option>
+                        <option value="100">Under $100</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Sort By
+                      </label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      >
+                        <option value="mentions">Most Mentioned</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      Showing <span className="font-semibold text-slate-900">{filteredStocks.length}</span> stocks
+                    </div>
+                    {(searchQuery || priceFilter !== 'all') && (
+                      <button
+                        onClick={() => { setSearchQuery(''); setPriceFilter('all'); }}
+                        className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stock Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {filteredStocks.map((stock, idx) => (
+                    <div
+                      key={stock.ticker}
+                      className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:scale-105 fade-in"
+                      style={{ animationDelay: `${idx * 0.05}s` }}
+                      onClick={() => setSelectedStock(stock)}
+                    >
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-2xl font-bold text-slate-900 mb-1">{stock.ticker}</h3>
+                            <div className="flex items-center gap-2">
+                              <DollarSign size={18} className="text-emerald-600" />
+                              <span className="text-3xl font-bold text-emerald-600">
+                                {stock.price.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            stock.price < 10 ? 'bg-emerald-100 text-emerald-700' :
+                            stock.price < 50 ? 'bg-blue-100 text-blue-700' :
+                            'bg-purple-100 text-purple-700'
+                          }`}>
+                            {stock.price < 10 ? 'Penny' : stock.price < 50 ? 'Growth' : 'Blue Chip'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+                          <FileText size={16} />
+                          <span>
+                            <strong>{stock.source_count}</strong> article{stock.source_count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 mb-4">
+                          <p className="text-sm text-slate-700 line-clamp-3">
+                            {stock.sources[0].notes}
+                          </p>
+                        </div>
+
+                        <button className="w-full px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg transition-all flex items-center justify-center gap-2 font-medium shadow-sm hover:shadow-md">
+                          View Details
+                          <ExternalLink size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Empty State */}
+                {filteredStocks.length === 0 && (
+                  <div className="text-center py-16 fade-in">
+                    <div className="text-6xl mb-4">📊</div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">No stocks found</h3>
+                    <p className="text-slate-600 mb-4">Try adjusting your filters</p>
+                    <button
+                      onClick={() => { setSearchQuery(''); setPriceFilter('all'); }}
+                      className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
+
+                {/* Modal */}
+                {selectedStock && (
+                  <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in"
+                    onClick={() => setSelectedStock(null)}
+                  >
+                    <div
+                      className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="sticky top-0 bg-white border-b border-slate-200 p-6 md:p-8 z-10">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">{selectedStock.ticker}</h2>
+                            <div className="flex items-center gap-3">
+                              <span className="text-3xl md:text-4xl font-bold text-emerald-600">
+                                ${selectedStock.price.toFixed(2)}
+                              </span>
+                              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                selectedStock.price < 10 ? 'bg-emerald-100 text-emerald-700' :
+                                selectedStock.price < 50 ? 'bg-blue-100 text-blue-700' :
+                                'bg-purple-100 text-purple-700'
+                              }`}>
+                                {selectedStock.price < 10 ? 'Penny Stock' : selectedStock.price < 50 ? 'Growth Stock' : 'Blue Chip'}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setSelectedStock(null)}
+                            className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-lg"
+                          >
+                            <X size={24} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-6 md:p-8">
+                        <div className="space-y-6">
+                          <div>
+                            <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                              <FileText size={24} className="text-emerald-600" />
+                              Featured in {selectedStock.source_count} Article{selectedStock.source_count !== 1 ? 's' : ''}
+                            </h3>
+                          </div>
+
+                          {selectedStock.sources.map((source, idx) => (
+                            <div key={idx} className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-6 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-3">
+                                <h4 className="font-semibold text-slate-900 flex-1 mr-4 text-lg">
+                                  {source.title}
+                                </h4>
+                                <a
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-600 hover:text-emerald-700 transition-colors p-2 hover:bg-white rounded-lg"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink size={20} />
+                                </a>
+                              </div>
+
+                              <div className="text-sm text-slate-500 mb-4">
+                                Published: {source.published || 'N/A'}
+                              </div>
+
+                              <div className="bg-white rounded-lg p-4 border-l-4 border-emerald-500">
+                                <p className="text-slate-700 leading-relaxed">
+                                  {source.notes}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setSelectedStock(null)}
+                          className="mt-6 w-full px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-900 rounded-lg transition-colors font-medium"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<StockScreener />);
+    </script>
+</body>
+</html>
